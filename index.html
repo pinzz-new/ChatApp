@@ -397,6 +397,14 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
+// DEBUG: tampilkan error JS sebagai alert (sementara untuk troubleshooting)
+window.addEventListener('error', (e) => {
+  alert('ERROR: ' + e.message + ' (line ' + e.lineno + ')');
+});
+window.addEventListener('unhandledrejection', (e) => {
+  alert('PROMISE ERROR: ' + (e.reason && e.reason.message ? e.reason.message : e.reason));
+});
+
 let currentUser = null;
 let activeChatId = null;
 let unsubMessages = null;
@@ -536,35 +544,43 @@ onAuthStateChanged(auth, (user) => {
 
 // ===== START / OPEN NEW CHAT =====
 document.getElementById("btn-add-chat").onclick = async () => {
+  alert("DEBUG: tombol diklik"); // sementara untuk troubleshooting
   let code = document.getElementById("contact-uid").value.trim().toUpperCase();
+  alert("DEBUG: kode = " + code);
   if (!code) return;
   if (!code.startsWith("NV-")) code = "NV-" + code;
 
-  const codeDoc = await getDoc(doc(db, "chatCodes", code));
-  if (!codeDoc.exists()) { alert("Kode chat tidak ditemukan."); return; }
+  try {
+    const codeDoc = await getDoc(doc(db, "chatCodes", code));
+    alert("DEBUG: codeDoc exists = " + codeDoc.exists());
+    if (!codeDoc.exists()) { alert("Kode chat tidak ditemukan."); return; }
 
-  const otherUid = codeDoc.data().uid;
-  if (otherUid === currentUser.uid) { alert("Itu kode chat kamu sendiri."); return; }
+    const otherUid = codeDoc.data().uid;
+    alert("DEBUG: otherUid = " + otherUid);
+    if (otherUid === currentUser.uid) { alert("Itu kode chat kamu sendiri."); return; }
 
-  const otherDoc = await getDoc(doc(db, "users", otherUid));
-  if (!otherDoc.exists()) { alert("User tidak ditemukan."); return; }
+    const otherDoc = await getDoc(doc(db, "users", otherUid));
+    if (!otherDoc.exists()) { alert("User tidak ditemukan."); return; }
 
-  const chatId = [currentUser.uid, otherUid].sort().join("_");
-  const chatRef = doc(db, "chats", chatId);
-  const chatDoc = await getDoc(chatRef);
-  if (!chatDoc.exists()) {
-    await setDoc(chatRef, {
-      participants: [currentUser.uid, otherUid],
-      participantNames: {
-        [currentUser.uid]: currentUser.displayName || "User",
-        [otherUid]: otherDoc.data().name || "User"
-      },
-      lastMessage: "",
-      updatedAt: serverTimestamp()
-    });
+    const chatId = [currentUser.uid, otherUid].sort().join("_");
+    const chatRef = doc(db, "chats", chatId);
+    const chatDoc = await getDoc(chatRef);
+    if (!chatDoc.exists()) {
+      await setDoc(chatRef, {
+        participants: [currentUser.uid, otherUid],
+        participantNames: {
+          [currentUser.uid]: currentUser.displayName || "User",
+          [otherUid]: otherDoc.data().name || "User"
+        },
+        lastMessage: "",
+        updatedAt: serverTimestamp()
+      });
+    }
+    openChat(chatId);
+    document.getElementById("contact-uid").value = "";
+  } catch (err) {
+    alert("DEBUG CATCH: " + err.message);
   }
-  openChat(chatId);
-  document.getElementById("contact-uid").value = "";
 };
 
 // ===== LOAD CHAT LIST =====
