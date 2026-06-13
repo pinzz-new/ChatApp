@@ -559,13 +559,18 @@ document.getElementById("btn-add-chat").onclick = async () => {
     alert("DEBUG: otherUid = " + otherUid);
     if (otherUid === currentUser.uid) { alert("Itu kode chat kamu sendiri."); return; }
 
+    alert("DEBUG: mencoba getDoc users/" + otherUid);
     const otherDoc = await getDoc(doc(db, "users", otherUid));
+    alert("DEBUG: otherDoc exists = " + otherDoc.exists());
     if (!otherDoc.exists()) { alert("User tidak ditemukan."); return; }
 
     const chatId = [currentUser.uid, otherUid].sort().join("_");
+    alert("DEBUG: chatId = " + chatId);
     const chatRef = doc(db, "chats", chatId);
     const chatDoc = await getDoc(chatRef);
+    alert("DEBUG: chatDoc exists = " + chatDoc.exists());
     if (!chatDoc.exists()) {
+      alert("DEBUG: mencoba setDoc chat baru...");
       await setDoc(chatRef, {
         participants: [currentUser.uid, otherUid],
         participantNames: {
