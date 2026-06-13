@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ChatNow</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; font-family: 'Segoe UI', Tahoma, sans-serif; }
+  body { background:#f0f2f5; height:100vh; display:flex; align-items:center; justify-content:center; }
+
+  /* ===== AUTH SCREEN ===== */
+  #auth-screen {
+    background:#fff; border-radius:16px; padding:40px; width:360px;
+    box-shadow:0 8px 30px rgba(0,0,0,.1); text-align:center;
+  }
+  #auth-screen h1 { color:#6c5ce7; margin-bottom:5px; font-size:28px; }
+  #auth-screen p { color:#888; margin-bottom:25px; font-size:13px; }
+  #auth-screen input {
+    width:100%; padding:12px; margin:8px 0; border:1px solid #ddd;
+    border-radius:8px; font-size:14px; outline:none;
+  }
+  #auth-screen input:focus { border-color:#6c5ce7; }
+  #auth-screen button {
+    width:100%; padding:12px; margin-top:12px; border:none; border-radius:8px;
+    background:#6c5ce7; color:#fff; font-weight:600; cursor:pointer; font-size:14px;
+    transition:.2s;
+  }
+  #auth-screen button:hover { background:#5a4bd6; }
+  #auth-screen .switch { margin-top:15px; font-size:13px; color:#6c5ce7; cursor:pointer; }
+  #auth-screen .error { color:#e74c3c; font-size:12px; margin-top:8px; min-height:16px; }
+  #auth-screen .or { margin:15px 0; color:#aaa; font-size:12px; }
+  #auth-screen .anon-btn { background:#fff; color:#6c5ce7; border:1px solid #6c5ce7; }
+  #auth-screen .anon-btn:hover { background:#f4f1ff; }
+
+  /* ===== APP LAYOUT ===== */
+  #app {
+    display:none; width:900px; height:90vh; max-height:700px; background:#fff;
+    border-radius:16px; overflow:hidden; box-shadow:0 8px 30px rgba(0,0,0,.1);
+  }
+  #app.active { display:flex; }
+
+  /* Sidebar */
+  #sidebar { width:320px; border-right:1px solid #eee; display:flex; flex-direction:column; }
+  #sidebar-header {
+    padding:16px; background:#6c5ce7; color:#fff;
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  #sidebar-header .user-info { display:flex; align-items:center; gap:10px; }
+  #sidebar-header .avatar {
+    width:36px; height:36px; border-radius:50%; background:#fff; color:#6c5ce7;
+    display:flex; align-items:center; justify-content:center; font-weight:700;
+  }
+  #sidebar-header button {
+    background:rgba(255,255,255,.2); border:none; color:#fff; padding:6px 10px;
+    border-radius:6px; cursor:pointer; font-size:12px;
+  }
+  #new-chat-bar { padding:12px; border-bottom:1px solid #eee; display:flex; gap:8px; }
+  #new-chat-bar input {
+    flex:1; padding:10px; border:1px solid #ddd; border-radius:8px; font-size:13px; outline:none;
+  }
+  #new-chat-bar button {
+    padding:10px 14px; background:#6c5ce7; color:#fff; border:none; border-radius:8px;
+    cursor:pointer; font-size:13px;
+  }
+  #chat-list { flex:1; overflow-y:auto; }
+  .chat-item {
+    padding:14px 16px; display:flex; align-items:center; gap:12px; cursor:pointer;
+    border-bottom:1px solid #f5f5f5; transition:.15s;
+  }
+  .chat-item:hover, .chat-item.active { background:#f4f1ff; }
+  .chat-item .avatar {
+    width:42px; height:42px; border-radius:50%; background:#a29bfe; color:#fff;
+    display:flex; align-items:center; justify-content:center; font-weight:700; flex-shrink:0;
+  }
+  .chat-item .info { flex:1; overflow:hidden; }
+  .chat-item .name { font-weight:600; font-size:14px; color:#333; }
+  .chat-item .last-msg { font-size:12px; color:#999; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+  /* Chat window */
+  #chat-window { flex:1; display:flex; flex-direction:column; }
+  #chat-window-header {
+    padding:16px; border-bottom:1px solid #eee; display:flex; align-items:center; gap:12px;
+    background:#fafafa;
+  }
+  #chat-window-header .avatar {
+    width:40px; height:40px; border-radius:50%; background:#a29bfe; color:#fff;
+    display:flex; align-items:center; justify-content:center; font-weight:700;
+  }
+  #chat-window-header .name { font-weight:600; color:#333; }
+  #messages { flex:1; overflow-y:auto; padding:20px; display:flex; flex-direction:column; gap:10px; background:#f7f7fb; }
+  .msg {
+    max-width:60%; padding:10px 14px; border-radius:14px; font-size:14px; line-height:1.4;
+    word-wrap:break-word; position:relative;
+  }
+  .msg.sent { align-self:flex-end; background:#6c5ce7; color:#fff; border-bottom-right-radius:4px; }
+  .msg.received { align-self:flex-start; background:#fff; color:#333; border:1px solid #eee; border-bottom-left-radius:4px; }
+  .msg .time { font-size:10px; opacity:.6; margin-top:4px; display:block; text-align:right; }
+
+  #message-input-bar { padding:14px; border-top:1px solid #eee; display:flex; gap:10px; }
+  #message-input-bar input {
+    flex:1; padding:12px 16px; border:1px solid #ddd; border-radius:24px; font-size:14px; outline:none;
+  }
+  #message-input-bar input:focus { border-color:#6c5ce7; }
+  #message-input-bar button {
+    width:46px; height:46px; border-radius:50%; background:#6c5ce7; color:#fff;
+    border:none; cursor:pointer; font-size:18px; display:flex; align-items:center; justify-content:center;
+  }
+  #message-input-bar button:hover { background:#5a4bd6; }
+
+  #empty-state {
+    flex:1; display:flex; align-items:center; justify-content:center; flex-direction:column;
+    color:#bbb; gap:10px;
+  }
+  #empty-state h2 { color:#999; font-weight:500; }
+
+  ::-webkit-scrollbar { width:6px; }
+  ::-webkit-scrollbar-thumb { background:#ddd; border-radius:3px; }
+</style>
+</head>
+<body>
+
+<!-- AUTH SCREEN -->
+<div id="auth-screen">
+  <h1>ChatNow</h1>
+  <p>Ngobrol real-time, simpel & cepat</p>
+
+  <input type="text" id="display-name" placeholder="Nama tampilan (untuk daftar)" />
+  <input type="email" id="email" placeholder="Email" />
+  <input type="password" id="password" placeholder="Password" />
+
+  <button id="btn-login">Masuk</button>
+  <button id="btn-register">Daftar Baru</button>
+
+  <div class="or">— atau —</div>
+  <button class="anon-btn" id="btn-anon">Masuk sebagai Tamu</button>
+
+  <div class="error" id="auth-error"></div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app">
+  <div id="sidebar">
+    <div id="sidebar-header">
+      <div class="user-info">
+        <div class="avatar" id="my-avatar">?</div>
+        <div>
+          <div style="font-weight:600;" id="my-name">User</div>
+          <div style="font-size:11px; opacity:.8;" id="my-uid"></div>
+        </div>
+      </div>
+      <button id="btn-logout">Keluar</button>
+    </div>
+    <div id="new-chat-bar">
+      <input type="text" id="contact-uid" placeholder="Masukkan UID kontak..." />
+      <button id="btn-add-chat">Chat</button>
+    </div>
+    <div id="chat-list"></div>
+  </div>
+
+  <div id="chat-window">
+    <div id="empty-state">
+      <h2>Pilih chat atau mulai chat baru</h2>
+      <p style="font-size:13px;">Bagikan UID kamu ke teman untuk mulai chat</p>
+    </div>
+  </div>
+</div>
+
+<!-- Firebase SDK -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import {
+  getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
+  signInAnonymously, onAuthStateChanged, signOut, updateProfile
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import {
+  getFirestore, doc, setDoc, getDoc, collection, query, where,
+  onSnapshot, addDoc, serverTimestamp, orderBy, updateDoc, arrayUnion
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyD-JcOtm22fzVE6vVv9vq0EKXxqU48ZoCY",
+  authDomain: "chatapp-4f9d0.firebaseapp.com",
+  projectId: "chatapp-4f9d0",
+  storageBucket: "chatapp-4f9d0.firebasestorage.app",
+  messagingSenderId: "337831239447",
+  appId: "1:337831239447:web:d484fcbcb74383b8152152"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+let currentUser = null;
+let activeChatId = null;
+let unsubMessages = null;
+let unsubChats = null;
+
+// ===== AUTH HANDLERS =====
+document.getElementById("btn-register").onclick = async () => {
+  const name = document.getElementById("display-name").value.trim();
+  const email = document.getElementById("email").value.trim();
+  const password = document.getElementById("password").value;
+  const errEl = document.getElementById("auth-error");
+  errEl.textContent = "";
+  if (!name || !email || !password) { errEl.textContent = "Lengkapi semua field."; return; }
+  try {
+    const cred = await createUserWithEmailAndPassword(auth, email, password);
+    await updateProfile(cred.user, { displayName: name });
+    await setDoc(doc(db, "users", cred.user.uid), {
+      name, email, uid: cred.user.uid, createdAt: serverTimestamp()
+    });
+  } catch (e) { errEl.textContent = e.message; }
+};
+
+document.getElementById("btn-login").onclick = async () => {
+  const email = document.getElementById("email").value.trim();
+  const password = document.getElementById("password").value;
+  const errEl = document.getElementById("auth-error");
+  errEl.textContent = "";
+  try {
+    await signInWithEmailAndPassword(auth, email, password);
+  } catch (e) { errEl.textContent = e.message; }
+};
+
+document.getElementById("btn-anon").onclick = async () => {
+  const errEl = document.getElementById("auth-error");
+  errEl.textContent = "";
+  try {
+    const cred = await signInAnonymously(auth);
+    const name = "Tamu-" + cred.user.uid.slice(0, 5);
+    await updateProfile(cred.user, { displayName: name });
+    await setDoc(doc(db, "users", cred.user.uid), {
+      name, uid: cred.user.uid, createdAt: serverTimestamp()
+    }, { merge: true });
+  } catch (e) { errEl.textContent = e.message; }
+};
+
+document.getElementById("btn-logout").onclick = () => signOut(auth);
+
+// ===== AUTH STATE =====
+onAuthStateChanged(auth, (user) => {
+  if (user) {
+    currentUser = user;
+    document.getElementById("auth-screen").style.display = "none";
+    document.getElementById("app").classList.add("active");
+
+    const name = user.displayName || "User";
+    document.getElementById("my-name").textContent = name;
+    document.getElementById("my-avatar").textContent = name.charAt(0).toUpperCase();
+    document.getElementById("my-uid").textContent = "UID: " + user.uid;
+
+    loadChats();
+  } else {
+    currentUser = null;
+    document.getElementById("auth-screen").style.display = "block";
+    document.getElementById("app").classList.remove("active");
+    if (unsubMessages) unsubMessages();
+    if (unsubChats) unsubChats();
+  }
+});
+
+// ===== START / OPEN NEW CHAT =====
+document.getElementById("btn-add-chat").onclick = async () => {
+  const otherUid = document.getElementById("contact-uid").value.trim();
+  if (!otherUid || otherUid === currentUser.uid) return;
+
+  // cek apakah user tujuan ada
+  const otherDoc = await getDoc(doc(db, "users", otherUid));
+  if (!otherDoc.exists()) { alert("User dengan UID tersebut tidak ditemukan."); return; }
+
+  // chatId deterministik dari gabungan UID (urut alfabet)
+  const chatId = [currentUser.uid, otherUid].sort().join("_");
+  const chatRef = doc(db, "chats", chatId);
+  const chatDoc = await getDoc(chatRef);
+  if (!chatDoc.exists()) {
+    await setDoc(chatRef, {
+      participants: [currentUser.uid, otherUid],
+      participantNames: {
+        [currentUser.uid]: currentUser.displayName || "User",
+        [otherUid]: otherDoc.data().name || "User"
+      },
+      lastMessage: "",
+      updatedAt: serverTimestamp()
+    });
+  }
+  openChat(chatId);
+  document.getElementById("contact-uid").value = "";
+};
+
+// ===== LOAD CHAT LIST =====
+function loadChats() {
+  const q = query(collection(db, "chats"), where("participants", "array-contains", currentUser.uid));
+  unsubChats = onSnapshot(q, (snap) => {
+    const listEl = document.getElementById("chat-list");
+    listEl.innerHTML = "";
+    snap.forEach((docSnap) => {
+      const data = docSnap.data();
+      const otherUid = data.participants.find(p => p !== currentUser.uid);
+      const otherName = (data.participantNames && data.participantNames[otherUid]) || "User";
+
+      const item = document.createElement("div");
+      item.className = "chat-item" + (docSnap.id === activeChatId ? " active" : "");
+      item.innerHTML = `
+        <div class="avatar">${otherName.charAt(0).toUpperCase()}</div>
+        <div class="info">
+          <div class="name">${otherName}</div>
+          <div class="last-msg">${data.lastMessage || "Mulai mengobrol..."}</div>
+        </div>
+      `;
+      item.onclick = () => openChat(docSnap.id);
+      listEl.appendChild(item);
+    });
+  });
+}
+
+// ===== OPEN CHAT =====
+function openChat(chatId) {
+  activeChatId = chatId;
+
+  // refresh highlight
+  document.querySelectorAll(".chat-item").forEach(el => el.classList.remove("active"));
+
+  const chatWindow = document.getElementById("chat-window");
+  chatWindow.innerHTML = `
+    <div id="chat-window-header">
+      <div class="avatar" id="chat-avatar">?</div>
+      <div class="name" id="chat-name">Loading...</div>
+    </div>
+    <div id="messages"></div>
+    <div id="message-input-bar">
+      <input type="text" id="msg-input" placeholder="Tulis pesan..." />
+      <button id="btn-send">&#10148;</button>
+    </div>
+  `;
+
+  // ambil info chat
+  getDoc(doc(db, "chats", chatId)).then((chatDoc) => {
+    const data = chatDoc.data();
+    const otherUid = data.participants.find(p => p !== currentUser.uid);
+    const otherName = (data.participantNames && data.participantNames[otherUid]) || "User";
+    document.getElementById("chat-name").textContent = otherName;
+    document.getElementById("chat-avatar").textContent = otherName.charAt(0).toUpperCase();
+  });
+
+  // listen messages
+  if (unsubMessages) unsubMessages();
+  const msgQuery = query(collection(db, "chats", chatId, "messages"), orderBy("timestamp", "asc"));
+  unsubMessages = onSnapshot(msgQuery, (snap) => {
+    const msgEl = document.getElementById("messages");
+    if (!msgEl) return;
+    msgEl.innerHTML = "";
+    snap.forEach((docSnap) => {
+      const m = docSnap.data();
+      const isSent = m.senderId === currentUser.uid;
+      const time = m.timestamp ? new Date(m.timestamp.toDate()).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' }) : "";
+      const div = document.createElement("div");
+      div.className = "msg " + (isSent ? "sent" : "received");
+      div.innerHTML = `${escapeHtml(m.text)}<span class="time">${time}</span>`;
+      msgEl.appendChild(div);
+    });
+    msgEl.scrollTop = msgEl.scrollHeight;
+  });
+
+  // send handler
+  const input = document.getElementById("msg-input");
+  const sendBtn = document.getElementById("btn-send");
+  const send = () => sendMessage(chatId, input);
+  sendBtn.onclick = send;
+  input.onkeydown = (e) => { if (e.key === "Enter") send(); };
+}
+
+// ===== SEND MESSAGE =====
+async function sendMessage(chatId, input) {
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = "";
+
+  await addDoc(collection(db, "chats", chatId, "messages"), {
+    senderId: currentUser.uid,
+    text,
+    timestamp: serverTimestamp()
+  });
+
+  await updateDoc(doc(db, "chats", chatId), {
+    lastMessage: text,
+    updatedAt: serverTimestamp()
+  });
+}
+
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
+}
+</script>
+</body>
+</html>
